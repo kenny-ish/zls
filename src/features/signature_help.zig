@@ -57,7 +57,7 @@ fn fnProtoToSignatureInfo(
     analyser: *Analyser,
     arena: std.mem.Allocator,
     commas: u32,
-    skip_self_param: bool,
+    has_self_param: bool,
     func_type: Analyser.Type,
     markup_kind: types.MarkupKind,
 ) error{OutOfMemory}!types.SignatureHelp.Signature {
@@ -76,10 +76,7 @@ fn fnProtoToSignatureInfo(
         .snippet_placeholders = false,
     });
 
-    const arg_idx = if (skip_self_param) blk: {
-        const has_self_param = try analyser.hasSelfParam(func_type);
-        break :blk commas + @intFromBool(has_self_param);
-    } else commas;
+    const arg_idx = commas + @intFromBool(has_self_param);
 
     var params: std.ArrayList(types.SignatureHelp.Signature.Parameter) = .empty;
     for (info.parameters) |param| {
@@ -334,18 +331,19 @@ fn getSignatureInfo(
                 };
                 const name = offsets.locToSlice(handle.tree.source, name_loc);
 
-                const skip_self_param = !ty.is_type_val;
+                const lhs = ty;
                 ty = try analyser.resolveFieldAccess(ty, name) orelse {
                     try symbol_stack.append(arena, .l_paren);
                     continue;
                 };
 
                 if (try analyser.resolveFuncProtoOfCallable(ty)) |func_type| {
+                    const has_self_param = try analyser.hasSelfParamOn(lhs, func_type);
                     return try fnProtoToSignatureInfo(
                         analyser,
                         arena,
                         paren_commas,
-                        skip_self_param,
+                        has_self_param,
                         func_type,
                         markup_kind,
                     );

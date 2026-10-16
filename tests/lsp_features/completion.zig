@@ -327,6 +327,65 @@ test "function alias" {
     });
 }
 
+test "function alias with self parameter" {
+    try testCompletion(
+        \\const E = enum { yes, no };
+        \\const other = struct {
+        \\    fn foo(_: S, _: E) void {}
+        \\};
+        \\const S = struct {
+        \\    alpha: u32,
+        \\    const foo = other.foo;
+        \\};
+        \\const s: S = undefined;
+        \\const bar = s.foo(.<cursor>);
+    , &.{
+        .{ .label = "yes", .kind = .EnumMember },
+        .{ .label = "no", .kind = .EnumMember },
+    });
+    try testCompletion(
+        \\const E = enum { yes, no };
+        \\const other = struct {
+        \\    fn foo(_: *S, _: E) void {}
+        \\};
+        \\const S = struct {
+        \\    alpha: u32,
+        \\    const foo = other.foo;
+        \\};
+        \\const s: *S = undefined;
+        \\const bar = s.foo(.<cursor>);
+    , &.{
+        .{ .label = "yes", .kind = .EnumMember },
+        .{ .label = "no", .kind = .EnumMember },
+    });
+    try testCompletion(
+        \\const E = enum { yes, no };
+        \\const other = struct {
+        \\    fn foo(_: S, _: E) void {}
+        \\};
+        \\const S = struct {
+        \\    alpha: u32,
+        \\    const foo = other.foo;
+        \\};
+        \\const s: S = undefined;
+        \\const bar = s.foo(undefined, .<cursor>);
+    , &.{});
+    try testCompletion(
+        \\const E = enum { yes, no };
+        \\const other = struct {
+        \\    fn foo(_: S, _: E) void {}
+        \\};
+        \\const S = struct {
+        \\    alpha: u32,
+        \\    const foo = other.foo;
+        \\};
+        \\const bar = S.foo(undefined, .<cursor>);
+    , &.{
+        .{ .label = "yes", .kind = .EnumMember },
+        .{ .label = "no", .kind = .EnumMember },
+    });
+}
+
 test "generic function" {
     try testCompletion(
         \\const S = struct { alpha: u32 };

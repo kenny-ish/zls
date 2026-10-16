@@ -453,6 +453,26 @@ pub fn hasSelfParam(analyser: *Analyser, func_ty: Type) error{OutOfMemory}!bool 
     return analyser.firstParamIs(func_ty, in_container);
 }
 
+/// Returns whether the first parameter of `func_ty` is bound to `lhs` when the
+/// function is called with method call syntax (`lhs.func(...)`).
+///
+/// Unlike `hasSelfParam`, this uses the type that the function is accessed on
+/// instead of the container that the function has been declared in. The two
+/// differ when a function has been aliased into another container:
+/// ```zig
+/// const S = struct {
+///     pub const foo = other.foo; // `fn foo(_: S, _: u32) void`
+/// };
+/// ```
+pub fn hasSelfParamOn(analyser: *Analyser, lhs: Type, func_ty: Type) error{OutOfMemory}!bool {
+    std.debug.assert(func_ty.isFunc());
+    if (lhs.is_type_val) return false;
+    for (try lhs.getAllTypesWithHandles(analyser)) |ty| {
+        if (analyser.firstParamIs(func_ty, try ty.typeOf(analyser))) return true;
+    }
+    return false;
+}
+
 pub fn firstParamIs(
     analyser: *Analyser,
     func_type: Type,

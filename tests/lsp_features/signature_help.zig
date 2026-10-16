@@ -294,6 +294,41 @@ test "self parameter" {
     , "fn foo(self: *S, a: u32, b: void) bool", 2);
 }
 
+test "self parameter on function alias" {
+    try testSignatureHelp(
+        \\const other = struct {
+        \\    fn foo(self: S, a: u32, b: void) bool {}
+        \\};
+        \\const S = struct {
+        \\    alpha: u32,
+        \\    const foo = other.foo;
+        \\};
+        \\const s: S = undefined;
+        \\const bar = s.foo(3,<cursor>);
+    , "fn foo(self: S, a: u32, b: void) bool", 2);
+    try testSignatureHelp(
+        \\const other = struct {
+        \\    fn foo(self: *S, a: u32, b: void) bool {}
+        \\};
+        \\const S = struct {
+        \\    alpha: u32,
+        \\    const foo = other.foo;
+        \\};
+        \\const s: *S = undefined;
+        \\const bar = s.foo(3,<cursor>);
+    , "fn foo(self: *S, a: u32, b: void) bool", 2);
+    try testSignatureHelp(
+        \\const other = struct {
+        \\    fn foo(self: S, a: u32, b: void) bool {}
+        \\};
+        \\const S = struct {
+        \\    alpha: u32,
+        \\    const foo = other.foo;
+        \\};
+        \\const bar = S.foo(undefined,<cursor>);
+    , "fn foo(self: S, a: u32, b: void) bool", 1);
+}
+
 test "self parameter is anytype" {
     try testSignatureHelp(
         \\const S = struct {

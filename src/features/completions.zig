@@ -1664,7 +1664,9 @@ fn collectContainerNodes(
     switch (handle.tree.nodeTag(nodes[0])) {
         .field_access => {
             if (try builder.analyser.resolveTypeOfNode(.of(nodes[0], handle))) |ty| {
-                try collectFieldAccessTypes(builder, dot_context, ty, &types_with_handles);
+                const lhs_node, _ = handle.tree.nodeData(nodes[0]).node_and_token;
+                const lhs_ty = try builder.analyser.resolveTypeOfNode(.of(lhs_node, handle));
+                try collectFieldAccessTypes(builder, dot_context, lhs_ty, ty, &types_with_handles);
                 return types_with_handles.keys();
             }
         },
@@ -1768,6 +1770,8 @@ fn collectVarAccessContainerNodes(
 fn collectFieldAccessTypes(
     builder: *Builder,
     dot_context: EnumLiteralContext,
+    /// The type that `ty` has been accessed on, `null` if unknown.
+    lhs_ty: ?Analyser.Type,
     ty: Analyser.Type,
     types_with_handles: *Analyser.Type.ArraySet,
 ) error{OutOfMemory}!void {
@@ -1791,7 +1795,7 @@ fn collectFieldAccessTypes(
         _ = try node_type.getAllTypesWithHandlesArraySet(analyser, types_with_handles);
         return;
     }
-    const has_self_param = try analyser.hasSelfParam(node_type);
+    const has_self_param = if (lhs_ty) |lhs| try analyser.hasSelfParamOn(lhs, node_type) else false;
     const params = info.parameters;
     const param_index = dot_context.fn_arg_index + @intFromBool(has_self_param);
     if (param_index >= params.len) return;
@@ -1830,7 +1834,7 @@ fn collectFieldAccessContainerNodes(
     const decls = try analyser.getSymbolFieldAccesses(arena, handle, loc.end, loc, name) orelse return;
     for (decls) |decl| {
         const ty = try decl.resolveType(analyser) orelse continue;
-        try collectFieldAccessTypes(builder, dot_context, ty, types_with_handles);
+        try collectFieldAccessTypes(builder, dot_context, decl.container_type, ty, types_with_handles);
     }
 }
 
